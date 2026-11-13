@@ -65,3 +65,16 @@ export function costTotals(items) {
   }
   return { total, byDay };
 }
+
+// Where the "지금" line goes in a sorted day list: after every item that has started.
+export function nowIndex(sorted, nowMinutes) {
+  return sorted.filter((i) => i.start !== null && toMinutes(i.start) <= nowMinutes).length;
+}
+
+// The day the timeline opens on when the URL names none.
+export function defaultDay(status, days, items) {
+  if (status.kind === 'during') return status.day;
+  if (days) return 1;
+  const numbered = items.map((i) => i.day).filter((d) => Number.isInteger(d) && d >= 1);
+  return numbered.length ? Math.min(...numbered) : 'none';
+}

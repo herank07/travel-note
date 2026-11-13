@@ -49,3 +49,19 @@ test('costTotals ignores null costs', () => {
   assert.equal(t.total, 55);
   assert.equal(t.byDay.get(2), 15);
 });
+
+import { nowIndex, defaultDay } from '../../site/js/schedule.js';
+
+test('nowIndex counts items that already started', () => {
+  const sorted = sortItems([a, b, c]);
+  assert.equal(nowIndex(sorted, 500), 0);
+  assert.equal(nowIndex(sorted, 800), 1);
+  assert.equal(nowIndex(sorted, 870), 2);
+});
+
+test('defaultDay', () => {
+  assert.equal(defaultDay({ kind: 'during', day: 2 }, 4, []), 2);
+  assert.equal(defaultDay({ kind: 'before', dday: 3 }, 4, []), 1);
+  assert.equal(defaultDay({ kind: 'undated' }, null, [d, e]), 5);
+  assert.equal(defaultDay({ kind: 'undated' }, null, [e]), 'none');
+});
