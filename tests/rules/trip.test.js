@@ -120,6 +120,31 @@ for (const sub of ['items', 'journal', 'checklist']) {
   });
 }
 
+test('a removed member cannot rejoin with the old link or a plain update', async () => {
+  await seed(env, 'trips/T/joins/Q', { code: 'GOODCODE' });
+  const db = as(env, 'P');
+  const batch = db.batch();
+  batch.update(db.doc('trips/T'), { memberIds: ['P'] });
+  batch.delete(db.doc('trips/T/joins/Q'));
+  batch.set(db.doc('trips/T/private/invite'), { code: 'NEWCODE9' });
+  batch.delete(db.doc('inviteCodes/GOODCODE'));
+  batch.set(db.doc('inviteCodes/NEWCODE9'), { tripId: 'T' });
+  await assertSucceeds(batch.commit());
+  await assertFails(join('Q', 'GOODCODE'));
+  await assertFails(as(env, 'Q').doc('trips/T').update({ memberIds: arrayUnion('Q') }));
+});
+
+test('a member can leave; nobody else is removed that way', async () => {
+  await assertFails(as(env, 'Q').doc('trips/T').update({ memberIds: ['Q'] }));
+  await assertSucceeds(as(env, 'Q').doc('trips/T').update({ memberIds: ['P'] }));
+  await assertFails(as(env, 'Q').doc('trips/T').get());
+});
+
+test('people cannot be listed', async () => {
+  await assertFails(as(env, 'S').collection('people').get());
+  await assertSucceeds(as(env, 'S').doc('people/P').get());
+});
+
 test('journal author must be yourself', async () => {
   await assertFails(as(env, 'Q').doc('trips/T/journal/j1').set({ day: 1, title: 't', body: 'b', authorId: 'P', updatedAt: new Date() }));
 });

@@ -21,11 +21,31 @@ function append(el, children) {
   }
 }
 
+let lastHash = null;
+
+// Replace the screen. Redrawing the same screen keeps the scroll position and the
+// focused field (its id, value and cursor); a new screen starts at the top.
 export function mount(...children) {
   const root = document.getElementById('app');
+  const same = location.hash === lastHash;
+  const y = window.scrollY;
+  const active = document.activeElement;
+  const focus = same && active && active.id && root.contains(active)
+    ? { id: active.id, value: active.value, start: active.selectionStart, end: active.selectionEnd } : null;
   root.replaceChildren();
   append(root, children);
-  window.scrollTo(0, 0);
+  lastHash = location.hash;
+  if (!same) { window.scrollTo(0, 0); return; }
+  window.scrollTo(0, y);
+  if (focus) {
+    const el = document.getElementById(focus.id);
+    if (el && !el.isConnected) return;
+    if (el && el !== active && 'value' in el && typeof focus.value === 'string') {
+      el.value = focus.value;
+      try { el.setSelectionRange(focus.start, focus.end); } catch { /* not a text field */ }
+    }
+    el?.focus({ preventScroll: true });
+  }
 }
 
 let noticeTimer;

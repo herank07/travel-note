@@ -148,6 +148,28 @@ try {
   check('checklist item added', true);
   await friend.screenshot({ path: `${SHOTS}/checklist.png`, fullPage: true });
 
+  // Typing in the journal survives another member's save.
+  await friend.goto(`${BASE}${NOW}#/trip/${tripId}/journal`);
+  await clickText(friend, '+ 기록 쓰기');
+  await friend.waitForSelector('#entry-body');
+  await friend.type('#entry-body', '쓰는 중인 글');
+  await owner.goto(`${BASE}${NOW}#/trip/${tripId}/journal`);
+  await clickText(owner, '+ 기록 쓰기');
+  await fill(owner, 'entry-title', '둘째 날');
+  await clickText(owner, '저장');
+  await waitText(friend, '둘째 날');
+  check('journal draft kept while another member saves', (await friend.$eval('#entry-body', (e) => e.value)) === '쓰는 중인 글');
+
+  // Removing a member closes the door: their saved link no longer works.
+  await owner.goto(`${BASE}${NOW}#/trip/${tripId}/members`);
+  await owner.waitForSelector('.code-box');
+  const current = await owner.$eval('.code-box', (e) => e.textContent.trim());
+  await clickText(owner, '내보내기');
+  await waitText(owner, '내보냈어요');
+  await friend.goto(`${BASE}${NOW}#/join/${current}`);
+  await waitText(friend, '초대 코드를 찾을 수 없어요');
+  check('removed member cannot rejoin with the saved link', true);
+
   // Device linking: the owner's identity moves to a new device.
   const laptop = await newPage();
   await laptop.goto(`${BASE}${NOW}`);

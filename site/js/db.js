@@ -146,7 +146,23 @@ export async function joinByCode(code) {
   return tripId;
 }
 
-export const removeMember = (tripId, personId) => updateDoc(doc(db, 'trips', tripId), { memberIds: arrayRemove(personId) });
+// Removing someone also changes the invite code, so a link they saved stops working.
+export async function removeMember(tripId, personId) {
+  const old = await getInvite(tripId);
+  const code = generateCode();
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'trips', tripId), { memberIds: arrayRemove(personId) });
+  batch.delete(doc(db, 'trips', tripId, 'joins', personId));
+  batch.set(doc(db, 'trips', tripId, 'private', 'invite'), { code });
+  if (old) batch.delete(doc(db, 'inviteCodes', old));
+  batch.set(doc(db, 'inviteCodes', code), { tripId });
+  await batch.commit();
+  return code;
+}
+
+export async function leaveTrip(tripId) {
+  await updateDoc(doc(db, 'trips', tripId), { memberIds: arrayRemove(await getMyPersonId()) });
+}
 export const addMember = (tripId, personId) => updateDoc(doc(db, 'trips', tripId), { memberIds: arrayUnion(personId) });
 
 // ---- trip contents ----

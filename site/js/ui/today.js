@@ -68,7 +68,9 @@ export function renderToday(params) {
   };
   const off = watchTripAndItems(params.tripId, (trip, items) => { latest = [trip, items]; draw(); });
   const timer = setInterval(draw, 60 * 1000);
-  return () => { off(); clearInterval(timer); };
+  const onShow = () => { if (document.visibilityState === 'visible') draw(); };
+  document.addEventListener('visibilitychange', onShow);
+  return () => { off(); clearInterval(timer); document.removeEventListener('visibilitychange', onShow); };
 }
 
 function view(trip, items, requestedDay) {

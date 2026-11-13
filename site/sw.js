@@ -39,11 +39,17 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(fetch(request).catch(() => caches.match('index.html')));
     return;
   }
-  event.respondWith(caches.match(request, { ignoreSearch: true }).then((hit) => hit || fetch(request).then((res) => {
-    if (res.ok || res.type === 'opaque') {
-      const copy = res.clone();
-      caches.open(CACHE).then((c) => c.put(request, copy));
-    }
-    return res;
-  })));
+  // Stale-while-revalidate: answer from the cache at once, refresh the cache in the background,
+  // so the next launch gets the newest files even if CACHE_VERSION was not bumped.
+  event.respondWith(caches.match(request, { ignoreSearch: true }).then((hit) => {
+    const network = fetch(request).then((res) => {
+      if (res.ok || res.type === 'opaque') {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(request, copy));
+      }
+      return res;
+    });
+    if (hit) { event.waitUntil(network.catch(() => {})); return hit; }
+    return network;
+  }));
 });

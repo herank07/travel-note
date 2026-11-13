@@ -14,7 +14,7 @@ service cloud.firestore {
 
     // ---- people and devices ----
     match /people/{personId} {
-      allow read: if registered();
+      allow get: if registered();
       allow create: if signedIn() && personId == request.auth.uid
         && request.resource.data.keys().hasOnly(['name', 'createdAt'])
         && nameOk(request.resource.data.name);
@@ -78,6 +78,10 @@ service cloud.firestore {
         (me() in resource.data.memberIds && unchanged('memberIds'))
         // the owner adds or removes members but stays a member
         || (resource.data.ownerId == me() && me() in request.resource.data.memberIds)
+        // a member other than the owner leaves
+        || (me() in resource.data.memberIds && resource.data.ownerId != me()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+            && request.resource.data.memberIds == resource.data.memberIds.removeAll([me()]))
         // a non-member joins themselves with the current invite code
         || (!(me() in resource.data.memberIds)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
@@ -100,6 +104,8 @@ service cloud.firestore {
         allow update: if registered() && personId == me()
           && request.resource.data.keys().hasOnly(['code'])
           && request.resource.data.code == get(invitePath(tripId)).data.code;
+        // the owner clears a removed member's join record
+        allow delete: if registered() && get(tripPath(tripId)).data.ownerId == me();
       }
 
       match /items/{id} {

@@ -7,10 +7,18 @@ import { loading, gone, tabbar } from './tripShell.js';
 
 export function renderNextItem(params) {
   mount(loading());
-  return watchTripAndItems(params.tripId, (trip, items) => {
+  let latest = null;
+  const draw = () => {
+    if (!latest) return;
+    const [trip, items] = latest;
     if (!trip) { mount(gone()); return; }
     mount(view(trip, items));
-  });
+  };
+  const off = watchTripAndItems(params.tripId, (trip, items) => { latest = [trip, items]; draw(); });
+  const timer = setInterval(draw, 60 * 1000);
+  const onShow = () => { if (document.visibilityState === 'visible') draw(); };
+  document.addEventListener('visibilitychange', onShow);
+  return () => { off(); clearInterval(timer); document.removeEventListener('visibilitychange', onShow); };
 }
 
 function view(trip, items) {

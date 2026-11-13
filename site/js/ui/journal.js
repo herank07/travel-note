@@ -1,23 +1,28 @@
-import { h, mount, field, notice } from './dom.js';
+import { h, mount, field, notice, confirmButton } from './dom.js';
 import { watchTrip, watchJournal, saveEntry, deleteEntry, getPeople } from '../db.js';
 import { dayTitle } from './today.js';
 import { tabbar, loading, gone } from './tripShell.js';
 
 export function renderJournal(params) {
   mount(loading());
-  let trip; let entries = null; let names = new Map(); let editing = null;
+  let alive = true;
+  let trip; let entries = null; let names = new Map(); let formEl = null;
+  // The open form is built once and reused, so redraws never wipe what is being typed.
+  const setEditing = (e) => { formEl = e ? entryForm(trip, e, setEditing) : null; draw(); };
   const draw = () => {
-    if (trip === undefined || entries === null) return;
+    if (!alive || trip === undefined || entries === null) return;
     if (!trip) { mount(gone()); return; }
-    mount(view(trip, entries, names, editing, (e) => { editing = e; draw(); }));
+    mount(view(trip, entries, names, formEl, setEditing));
   };
   const off1 = watchTrip(params.tripId, (t) => { trip = t; draw(); }, () => { trip = null; draw(); });
   const off2 = watchJournal(params.tripId, async (list) => {
     entries = list;
-    names = await getPeople(list.map((e) => e.authorId).filter(Boolean));
+    const result = await getPeople(list.map((e) => e.authorId).filter(Boolean));
+    if (!alive) return;
+    names = result;
     draw();
   }, () => { entries = []; draw(); });
-  return () => { off1(); off2(); };
+  return () => { alive = false; off1(); off2(); };
 }
 
 function sortEntries(entries) {
@@ -51,14 +56,14 @@ function entryForm(trip, entry, done) {
     error);
 }
 
-function view(trip, entries, names, editing, setEditing) {
+function view(trip, entries, names, formEl, setEditing) {
   const sorted = sortEntries(entries);
   return h('main', { class: 'screen' },
     h('div', { class: 'topline' }, h('a', { href: '#/', style: 'text-decoration:none' }, '‹ 여행 목록'), h('span', {}, trip.name)),
     h('div', { class: 'title-row' }, h('h1', {}, '기록'),
-      editing ? null : h('button', { class: 'btn small', type: 'button', onclick: () => setEditing({}) }, '+ 기록 쓰기')),
-    editing ? entryForm(trip, editing, setEditing) : null,
-    sorted.length === 0 && !editing
+      formEl ? null : h('button', { class: 'btn small', type: 'button', onclick: () => setEditing({}) }, '+ 기록 쓰기')),
+    formEl,
+    sorted.length === 0 && !formEl
       ? h('div', { class: 'empty' }, h('p', {}, '아직 기록이 없어요. 여행 중이나 다녀와서 그날 있었던 일을 남겨 보세요.'))
       : sorted.map((e) => h('article', { class: 'entry' },
         h('div', { class: 'meta' }, h('span', {}, e.day ? dayTitle(trip, e.day) : '날짜 없음'), h('span', {}, names.get(e.authorId) || '')),
@@ -66,7 +71,7 @@ function view(trip, entries, names, editing, setEditing) {
         e.body ? h('p', { class: 'body' }, e.body) : null,
         h('div', { class: 'row' },
           h('button', { class: 'btn small', type: 'button', onclick: () => setEditing(e) }, '고치기'),
-          h('button', { class: 'btn small danger', type: 'button', onclick: () => { deleteEntry(trip.id, e.id); notice('기록을 지웠어요'); } }, '지우기')))),
+          confirmButton('지우기', '이 기록을 지울까요?', () => { deleteEntry(trip.id, e.id); notice('기록을 지웠어요'); })))),
     tabbar(trip.id, 'journal'),
   );
 }
