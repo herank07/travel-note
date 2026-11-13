@@ -80,8 +80,9 @@ export async function createTrip(fields) {
   // Online: wait, so the trip exists on the server before its screen starts listening.
   // Offline: the write is queued and the screen reads it from the local cache.
   const committed = batch.commit();
-  if (navigator.onLine) await committed;
-  else committed.catch((e) => console.error('createTrip', e));
+  committed.catch((e) => console.error('createTrip', e));
+  // Wait for the server, but at most 5 s: on a weak signal the write stays queued.
+  if (navigator.onLine) await Promise.race([committed, new Promise((r) => setTimeout(r, 5000))]);
   return tripRef.id;
 }
 
@@ -175,7 +176,8 @@ function watchSub(tripId, sub, cb, onError) {
 // Writes are not awaited by the UI: offline they resolve only after reconnecting.
 function saveSub(tripId, sub, row) {
   const { id, ...data } = row;
-  const p = id ? setDoc(doc(db, 'trips', tripId, sub, id), data) : addDoc(collection(db, 'trips', tripId, sub), data);
+  // Existing rows merge, so fields this form does not send (like another member's done tick) stay.
+  const p = id ? setDoc(doc(db, 'trips', tripId, sub, id), data, { merge: true }) : addDoc(collection(db, 'trips', tripId, sub), data);
   p.catch((e) => console.error(`save ${sub}`, e));
   return p;
 }

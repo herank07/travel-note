@@ -37,3 +37,8 @@ test('statusLabel', () => {
   assert.equal(statusLabel({ kind: 'after' }), '다녀옴');
   assert.equal(statusLabel({ kind: 'undated' }), '날짜 미정');
 });
+
+test('localParts falls back to Seoul for an unknown zone instead of throwing', () => {
+  const t = new Date('2027-04-16T05:20:00Z');
+  assert.deepEqual(localParts(t, 'Nope/Zone'), { ymd: '2027-04-16', minutes: 860 });
+});

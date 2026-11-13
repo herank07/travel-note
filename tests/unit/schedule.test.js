@@ -65,3 +65,11 @@ test('defaultDay', () => {
   assert.equal(defaultDay({ kind: 'undated' }, null, [d, e]), 5);
   assert.equal(defaultDay({ kind: 'undated' }, null, [e]), 'none');
 });
+
+import { focusItem } from '../../site/js/schedule.js';
+
+test('focusItem prefers the next item, then a running one', () => {
+  assert.deepEqual(focusItem([a, b, c], 800), { item: b, kind: 'next' });
+  assert.deepEqual(focusItem([a, b, c], 870), { item: b, kind: 'running' });
+  assert.deepEqual(focusItem([a, b, c], 1000), { item: null, kind: null });
+});

@@ -145,6 +145,30 @@ test('people cannot be listed', async () => {
   await assertSucceeds(as(env, 'S').doc('people/P').get());
 });
 
+test('trips reject unknown fields and bad values', async () => {
+  const db = as(env, 'P');
+  await assertFails(db.doc('trips/T2').set(tripData('P', { junk: 'x'.repeat(1000) })));
+  await assertFails(db.doc('trips/T3').set(tripData('P', { timeZone: 5 })));
+  await assertFails(db.doc('trips/T4').set(tripData('P', { days: 'four' })));
+  await assertFails(db.doc('trips/T5').set(tripData('P', { startDate: '15/04/2027' })));
+  await assertSucceeds(db.doc('trips/T6').set(tripData('P', { startDate: '2027-04-15', days: 4 })));
+  await assertFails(as(env, 'Q').doc('trips/T').update({ timeZone: 'Nope/Zone' }));
+  await assertFails(as(env, 'Q').doc('trips/T').update({ junk: 1 }));
+});
+
+test('items reject bad times, days and costs', async () => {
+  const db = as(env, 'Q');
+  const ok = { day: 1, start: '09:00', end: null, title: '예원', place: '', localName: '', localAddress: '', transit: '', mapUrl: '', category: '관광', cost: 40, memo: '', done: false };
+  await assertSucceeds(db.doc('trips/T/items/ok').set(ok));
+  await assertFails(db.doc('trips/T/items/b1').set({ ...ok, start: 5 }));
+  await assertFails(db.doc('trips/T/items/b2').set({ ...ok, start: '9시' }));
+  await assertFails(db.doc('trips/T/items/b3').set({ ...ok, day: '1' }));
+  await assertFails(db.doc('trips/T/items/b4').set({ ...ok, cost: '40' }));
+  await assertFails(db.doc('trips/T/items/b5').set({ ...ok, title: '' }));
+  await assertFails(db.doc('trips/T/items/b6').set({ ...ok, junk: 1 }));
+  await assertSucceeds(db.doc('trips/T/items/ok').update({ done: true }));
+});
+
 test('journal author must be yourself', async () => {
   await assertFails(as(env, 'Q').doc('trips/T/journal/j1').set({ day: 1, title: 't', body: 'b', authorId: 'P', updatedAt: new Date() }));
 });

@@ -6,10 +6,15 @@ const formatters = new Map();
 function formatterFor(timeZone) {
   let f = formatters.get(timeZone);
   if (!f) {
-    f = new Intl.DateTimeFormat('en-CA', {
-      timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-    });
+    const options = {
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    };
+    try {
+      f = new Intl.DateTimeFormat('en-CA', { ...options, timeZone });
+    } catch {
+      // An unknown zone must not break the screen; fall back to Seoul.
+      f = new Intl.DateTimeFormat('en-CA', { ...options, timeZone: 'Asia/Seoul' });
+    }
     formatters.set(timeZone, f);
   }
   return f;

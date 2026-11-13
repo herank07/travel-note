@@ -59,7 +59,7 @@ try {
   await fill(owner, 'trip-start', '2027-04-15');
   await fill(owner, 'trip-days', '4');
   await clickText(owner, '여행 만들기');
-  await waitText(owner, '이날 일정이 아직 없어요');
+  await waitText(owner, '오늘 남은 일정이 없어요');
   const tripId = owner.url().match(/trip\/([^/]+)\//)[1];
   check('trip created, opens on today (day 2)', (await text(owner)).includes('2일차 · 4월 16일 (금)'));
 
@@ -132,6 +132,20 @@ try {
   await stranger.goto(`${BASE}${NOW}#/join/${invite}`);
   await waitText(stranger, '초대 코드를 찾을 수 없어요');
   check('old invite code rejected', true);
+
+  // A "done" tick made by someone else survives my edit of the same item.
+  await owner.goto(`${BASE}${NOW}#/trip/${tripId}/today/2`);
+  await clickText(owner, '숙소 복귀', '.tl-title');
+  await owner.waitForSelector('#item-memo');
+  await friend.goto(`${BASE}${NOW}#/trip/${tripId}/today/2`);
+  await friend.waitForSelector('[aria-label="숙소 복귀 완료"]');
+  await friend.click('[aria-label="숙소 복귀 완료"]');
+  await friend.waitForSelector('[aria-label="숙소 복귀 완료 취소"]');
+  await fill(owner, 'item-memo', '체크아웃 시간 확인');
+  await clickText(owner, '저장');
+  await owner.waitForSelector('.tl-row');
+  await new Promise((r) => setTimeout(r, 1500));
+  check('done tick kept when another member edits', Boolean(await owner.$('[aria-label="숙소 복귀 완료 취소"]')));
 
   // Journal and checklist.
   await friend.goto(`${BASE}${NOW}#/trip/${tripId}/journal`);

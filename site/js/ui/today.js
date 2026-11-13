@@ -125,7 +125,7 @@ function view(trip, items, requestedDay) {
       : null,
     list.length
       ? h('ol', { class: 'timeline', 'aria-label': `${dayTitle(trip, day)} 일정` }, rows)
-      : h('div', { class: 'empty' }, h('p', {}, day === 'none' ? '날짜를 정하지 않은 일정이 없어요.' : '이날 일정이 아직 없어요.'),
+      : h('div', { class: 'empty' }, h('p', {}, day === 'none' ? '날짜를 정하지 않은 일정이 없어요.' : isToday ? '오늘 남은 일정이 없어요.' : '이날 일정이 아직 없어요.'),
         h('a', { class: 'btn primary', href: newItemHref(trip.id, day) }, '일정 추가')),
     isToday && list.length && !next && inProgress.length === 0
       ? h('p', { class: 'muted', style: 'text-align:center' }, '오늘 남은 일정이 없어요.') : null,

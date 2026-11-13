@@ -1,5 +1,5 @@
 // App shell cache. Bump CACHE_VERSION on every release so phones pick up new files.
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE = `travel-note-${CACHE_VERSION}`;
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 
@@ -36,7 +36,10 @@ self.addEventListener('fetch', (event) => {
   if (!cacheable(url)) return;
   if (request.mode === 'navigate') {
     // Pages: network first so updates arrive, cached shell when offline.
-    event.respondWith(fetch(request).catch(() => caches.match('index.html')));
+    // Weak signal that still reports online: wait at most 3 s, then open the cached shell.
+    const network = fetch(request);
+    const fallback = new Promise((resolve) => setTimeout(resolve, 3000)).then(() => caches.match('index.html'));
+    event.respondWith(Promise.race([network.catch(() => caches.match('index.html')), fallback.then((hit) => hit || network)]));
     return;
   }
   // Stale-while-revalidate: answer from the cache at once, refresh the cache in the background,

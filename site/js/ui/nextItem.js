@@ -1,6 +1,6 @@
 import { h, mount } from './dom.js';
 import { localParts, tripStatus, formatHM } from '../time.js';
-import { groupByDay, findNext, toMinutes, untilLabel, sortItems } from '../schedule.js';
+import { groupByDay, focusItem, toMinutes, untilLabel, sortItems } from '../schedule.js';
 import { mapUrl } from '../maps.js';
 import { watchTripAndItems, now, clockLine, subline, dayTitle } from './today.js';
 import { loading, gone, tabbar } from './tripShell.js';
@@ -30,7 +30,9 @@ function view(trip, items) {
     return h('main', { class: 'screen' }, back, h('div', { class: 'empty' }, h('p', {}, '여행 중에만 다음 일정을 보여 드려요.')), tabbar(trip.id, 'today'));
   }
   const list = groupByDay(items, trip.days).byDay.get(status.day) || [];
-  const { next } = findNext(list, local.minutes);
+  const { item: next, kind } = focusItem(list, local.minutes);
+  const running = kind === 'running';
+  const label = running ? '지금 하는 일정' : '다음 일정';
   const header = h('div', { class: 'topline' }, h('span', {}, `${trip.name} · ${dayTitle(trip, status.day)}`), h('span', { class: 'clock' }, clockLine(trip, at)));
   if (!next) {
     return h('main', { class: 'screen' }, header, back, h('div', { class: 'empty' }, h('p', {}, '오늘 남은 일정이 없어요.')), tabbar(trip.id, 'today'));
@@ -39,9 +41,9 @@ function view(trip, items) {
 
   return h('main', { class: 'screen' },
     header,
-    h('div', { class: 'title-row' }, h('h1', {}, '다음 일정'), back),
-    h('section', { class: 'card next-card', 'aria-label': '다음 일정' },
-      h('div', { class: 'label' }, h('span', {}, '다음 일정'), h('span', { class: 'pill accent' }, untilLabel(toMinutes(next.start) - local.minutes))),
+    h('div', { class: 'title-row' }, h('h1', {}, label), back),
+    h('section', { class: 'card next-card', 'aria-label': label },
+      h('div', { class: 'label' }, h('span', {}, label), h('span', { class: 'pill accent' }, running ? (next.end ? next.end + '까지' : '진행 중') : untilLabel(toMinutes(next.start) - local.minutes))),
       h('div', { style: 'display:flex;align-items:baseline;gap:10px' },
         h('span', { class: 'big-time' }, next.start),
         next.end ? h('span', { class: 'mono muted' }, `– ${next.end}`) : null),

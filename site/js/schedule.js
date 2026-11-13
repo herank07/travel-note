@@ -78,3 +78,11 @@ export function defaultDay(status, days, items) {
   const numbered = items.map((i) => i.day).filter((d) => Number.isInteger(d) && d >= 1);
   return numbered.length ? Math.min(...numbered) : 'none';
 }
+
+// What the big card shows: the next item, or the one running when nothing is left to start.
+export function focusItem(dayItems, nowMinutes) {
+  const { next, inProgress } = findNext(dayItems, nowMinutes);
+  if (next) return { item: next, kind: 'next' };
+  if (inProgress.length) return { item: inProgress[inProgress.length - 1], kind: 'running' };
+  return { item: null, kind: null };
+}

@@ -20,9 +20,14 @@ const screens = {
 };
 
 let cleanup = null;
+let showing = 0; // increases on every navigation; a slower, older one must not draw
+
+function runCleanup(fn) { if (fn) { try { fn(); } catch { /* ignore */ } } }
 
 async function show(route) {
-  if (cleanup) { try { cleanup(); } catch { /* ignore */ } cleanup = null; }
+  const token = ++showing;
+  runCleanup(cleanup);
+  cleanup = null;
   if (route.name === 'join') {
     try {
       const tripId = await joinByCode(route.params.code);
@@ -37,7 +42,10 @@ async function show(route) {
   }
   const [path, name] = screens[route.name] || screens.trips;
   const mod = await import(path);
-  cleanup = (await mod[name](route.params, { route })) || null;
+  if (token !== showing) return; // a newer navigation started while this module loaded
+  const done = (await mod[name](route.params, { route })) || null;
+  if (token !== showing) { runCleanup(done); return; }
+  cleanup = done;
 }
 
 function showError(text) {

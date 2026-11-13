@@ -63,6 +63,45 @@ service cloud.firestore {
       return request.resource.data.get(field, null) == resource.data.get(field, null);
     }
 
+    // ---- value checks (only the fields the app writes, with the expected types) ----
+    function strOk(v, max) { return v is string && v.size() <= max; }
+    function optDate(v) { return v == null || (v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')); }
+    function optInt(v, lo, hi) { return v == null || (v is int && v >= lo && v <= hi); }
+    function optHM(v) { return v == null || (v is string && v.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')); }
+    function zoneOk(z) {
+      return z in ['Asia/Shanghai', 'Asia/Seoul', 'Asia/Tokyo', 'Asia/Taipei', 'Asia/Hong_Kong', 'Asia/Bangkok',
+        'Asia/Ho_Chi_Minh', 'Asia/Singapore', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Los_Angeles'];
+    }
+    function validTrip(d) {
+      return d.keys().hasOnly(['name', 'destination', 'fromCode', 'toCode', 'startDate', 'days', 'timeZone',
+          'countryCode', 'currency', 'notes', 'ownerId', 'memberIds', 'createdAt'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 40
+        && strOk(d.get('destination', ''), 60) && strOk(d.get('fromCode', ''), 4) && strOk(d.get('toCode', ''), 4)
+        && optDate(d.get('startDate', null)) && optInt(d.get('days', null), 1, 60)
+        && zoneOk(d.timeZone) && strOk(d.get('countryCode', ''), 2) && strOk(d.get('currency', ''), 3)
+        && strOk(d.get('notes', ''), 2000) && d.memberIds is list && d.memberIds.size() <= 50;
+    }
+    function validItem(d) {
+      return d.keys().hasOnly(['day', 'start', 'end', 'title', 'place', 'localName', 'localAddress', 'transit',
+          'mapUrl', 'category', 'cost', 'memo', 'done'])
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 60
+        && optInt(d.get('day', null), 1, 60) && optHM(d.get('start', null)) && optHM(d.get('end', null))
+        && (d.get('cost', null) == null || (d.cost is number && d.cost >= 0))
+        && d.get('done', false) is bool
+        && strOk(d.get('place', ''), 80) && strOk(d.get('localName', ''), 80) && strOk(d.get('localAddress', ''), 160)
+        && strOk(d.get('transit', ''), 80) && strOk(d.get('mapUrl', ''), 500) && strOk(d.get('memo', ''), 2000)
+        && strOk(d.get('category', ''), 10);
+    }
+    function validCheck(d) {
+      return d.keys().hasOnly(['name', 'checked', 'order'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 60
+        && d.get('checked', false) is bool && d.get('order', 0) is number;
+    }
+    function validEntry(d) {
+      return d.keys().hasOnly(['day', 'title', 'body', 'authorId', 'updatedAt'])
+        && optInt(d.get('day', null), 1, 60) && strOk(d.get('title', ''), 60) && strOk(d.get('body', ''), 10000);
+    }
+
     function tripPath(tripId) { return /databases/$(database)/documents/trips/$(tripId); }
     function invitePath(tripId) { return /databases/$(database)/documents/trips/$(tripId)/private/invite; }
     function isMember(tripId) { return registered() && me() in get(tripPath(tripId)).data.memberIds; }
@@ -72,8 +111,9 @@ service cloud.firestore {
       allow read: if registered() && me() in resource.data.memberIds;
       allow create: if registered()
         && request.resource.data.ownerId == me()
-        && request.resource.data.memberIds == [me()];
-      allow update: if registered() && unchanged('ownerId') && (
+        && request.resource.data.memberIds == [me()]
+        && validTrip(request.resource.data);
+      allow update: if registered() && unchanged('ownerId') && validTrip(request.resource.data) && (
         // members edit details
         (me() in resource.data.memberIds && unchanged('memberIds'))
         // the owner adds or removes members but stays a member
@@ -109,17 +149,19 @@ service cloud.firestore {
       }
 
       match /items/{id} {
-        allow read, write: if isMember(tripId);
+        allow read, delete: if isMember(tripId);
+        allow create, update: if isMember(tripId) && validItem(request.resource.data);
       }
 
       match /checklist/{id} {
-        allow read, write: if isMember(tripId);
+        allow read, delete: if isMember(tripId);
+        allow create, update: if isMember(tripId) && validCheck(request.resource.data);
       }
 
       match /journal/{id} {
         allow read, delete: if isMember(tripId);
-        allow create: if isMember(tripId) && request.resource.data.authorId == me();
-        allow update: if isMember(tripId) && request.resource.data.authorId == resource.data.authorId;
+        allow create: if isMember(tripId) && validEntry(request.resource.data) && request.resource.data.authorId == me();
+        allow update: if isMember(tripId) && validEntry(request.resource.data) && request.resource.data.authorId == resource.data.authorId;
       }
     }
 

@@ -70,7 +70,8 @@ function draw(trip, item, isNew) {
       title, day: els.day.value === 'none' ? null : Number(els.day.value), start, end,
       category: els.category.value, place: els.place.value.trim(), localName: els.localName.value.trim(),
       localAddress: els.localAddress.value.trim(), transit: els.transit.value.trim(), mapUrl: els.mapUrl.value.trim(),
-      cost, memo: els.memo.value.trim(), done: Boolean(item.done),
+      cost, memo: els.memo.value.trim(),
+      ...(isNew ? { done: false } : {}),
     };
     saveItem(trip.id, row).catch(() => notice('저장하지 못했어요. 연결되면 다시 시도해 주세요.'));
     if (!navigator.onLine) notice('오프라인이에요. 연결되면 저장돼요');
