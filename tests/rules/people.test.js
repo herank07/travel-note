@@ -61,13 +61,15 @@ test('link and recovery codes can only be made for yourself', async () => {
   await assertFails(db.doc('recoveryCodes/R2').set({ personId: 'P' }));
 });
 
-test('codes cannot be read back by anyone', async () => {
+test('a code can be looked up by whoever knows it, never listed', async () => {
   await register(env, 'P', '혜원');
-  await register(env, 'S', '모르는 사람');
   await seed(env, 'recoveryCodes/R1', { personId: 'P' });
-  await assertFails(as(env, 'S').doc('recoveryCodes/R1').get());
-  await assertFails(as(env, 'S').collection('recoveryCodes').get());
-  await assertFails(as(env, 'S').collection('linkCodes').get());
+  await seed(env, 'linkCodes/C1', { personId: 'P', expiresAt: new Date(Date.now() + 10 * MIN) });
+  await assertSucceeds(as(env, 'NEWDEVICE').doc('recoveryCodes/R1').get());
+  await assertSucceeds(as(env, 'NEWDEVICE').doc('linkCodes/C1').get());
+  await assertFails(env.unauthenticatedContext().firestore().doc('recoveryCodes/R1').get());
+  await assertFails(as(env, 'NEWDEVICE').collection('recoveryCodes').get());
+  await assertFails(as(env, 'NEWDEVICE').collection('linkCodes').get());
 });
 
 test('recovery code can be created in the registration batch', async () => {

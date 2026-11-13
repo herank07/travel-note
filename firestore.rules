@@ -42,6 +42,7 @@ service cloud.firestore {
     }
 
     match /linkCodes/{code} {
+      allow get: if signedIn();
       allow create: if registered()
         && request.resource.data.keys().hasOnly(['personId', 'expiresAt'])
         && request.resource.data.personId == me()
@@ -51,6 +52,7 @@ service cloud.firestore {
     }
 
     match /recoveryCodes/{code} {
+      allow get: if signedIn();
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['personId'])
         && request.resource.data.personId == meAfter();
