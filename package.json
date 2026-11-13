@@ -1,0 +1,17 @@
+{
+  "name": "travel-note",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/unit/",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-travel \"node --test tests/rules/\"",
+    "serve": "http-server site -p 8080 -c-1",
+    "emulators": "firebase emulators:start --only firestore,auth --project demo-travel"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.3.0",
+    "firebase-tools": "^15.36.0",
+    "http-server": "^14.1.1"
+  }
+}
