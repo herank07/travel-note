@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- who is calling ----
+    function signedIn() { return request.auth != null; }
+    function devicePath() { return /databases/$(database)/documents/devices/$(request.auth.uid); }
+    function registered() { return signedIn() && exists(devicePath()); }
+    function me() { return get(devicePath()).data.personId; }
+    // The caller's person as it will be after this write (registration batches).
+    function meAfter() { return getAfter(devicePath()).data.personId; }
+
+    function nameOk(n) { return n is string && n.size() > 0 && n.size() <= 30; }
+
+    // ---- people and devices ----
+    match /people/{personId} {
+      allow read: if registered();
+      allow create: if signedIn() && personId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['name', 'createdAt'])
+        && nameOk(request.resource.data.name);
+      allow update: if registered() && me() == personId
+        && request.resource.data.keys().hasOnly(['name', 'createdAt'])
+        && nameOk(request.resource.data.name);
+    }
+
+    function validDevice(uid, d) {
+      return (d.via == 'self' && d.personId == uid && d.keys().hasOnly(['personId', 'via']))
+        || (d.via == 'link' && d.keys().hasOnly(['personId', 'via', 'code'])
+            && exists(/databases/$(database)/documents/linkCodes/$(d.code))
+            && get(/databases/$(database)/documents/linkCodes/$(d.code)).data.personId == d.personId
+            && get(/databases/$(database)/documents/linkCodes/$(d.code)).data.expiresAt > request.time)
+        || (d.via == 'recovery' && d.keys().hasOnly(['personId', 'via', 'code'])
+            && exists(/databases/$(database)/documents/recoveryCodes/$(d.code))
+            && get(/databases/$(database)/documents/recoveryCodes/$(d.code)).data.personId == d.personId);
+    }
+
+    match /devices/{uid} {
+      allow read: if signedIn() && uid == request.auth.uid;
+      allow create: if signedIn() && uid == request.auth.uid && validDevice(uid, request.resource.data);
+      allow update: if signedIn() && uid == request.auth.uid
+        && request.resource.data.via != 'self' && validDevice(uid, request.resource.data);
+    }
+
+    match /linkCodes/{code} {
+      allow create: if registered()
+        && request.resource.data.keys().hasOnly(['personId', 'expiresAt'])
+        && request.resource.data.personId == me()
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt <= request.time + duration.value(15, 'm');
+      allow delete: if registered() && resource.data.personId == me();
+    }
+
+    match /recoveryCodes/{code} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['personId'])
+        && request.resource.data.personId == meAfter();
+    }
+
+    // ---- trips ----
+    function unchanged(field) {
+      return request.resource.data.get(field, null) == resource.data.get(field, null);
+    }
+
+    match /trips/{tripId} {
+      allow read: if registered() && me() in resource.data.memberIds;
+      allow create: if registered()
+        && request.resource.data.ownerId == me()
+        && request.resource.data.memberIds == [me()];
+      allow update: if registered() && me() in resource.data.memberIds
+        && unchanged('ownerId') && unchanged('memberIds');
+      allow delete: if registered() && resource.data.ownerId == me();
+    }
+  }
+}
