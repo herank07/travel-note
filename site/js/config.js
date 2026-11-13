@@ -3,16 +3,25 @@ export const HOME_TZ = 'Asia/Seoul';
 export const HOME_LABEL = '한국';
 export const SDK = 'https://www.gstatic.com/firebasejs/10.14.1';
 
-// Replaced with the real project's web config at deploy time (Task 11).
-export const firebaseConfig = {
-  apiKey: 'demo-key',
-  authDomain: 'demo-travel.firebaseapp.com',
-  projectId: 'demo-travel',
-  appId: 'demo-app',
-};
-
 export const USE_EMULATOR = typeof location !== 'undefined'
   && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+
+// Public web config of the real project (not a secret; access is enforced by firestore.rules).
+const LIVE_CONFIG = {
+  apiKey: 'AIzaSyAC55GfWgYRPRmlJf7LoQZ8BQQ6Ue-NFDo',
+  authDomain: 'travel-note-34457.firebaseapp.com',
+  projectId: 'travel-note-34457',
+  storageBucket: 'travel-note-34457.firebasestorage.app',
+  messagingSenderId: '124693633778',
+  appId: '1:124693633778:web:e3e96f4912b6acb4114e6b',
+};
+
+// On this PC (localhost) the app talks to the local emulators instead.
+const EMULATOR_CONFIG = {
+  apiKey: 'demo-key', authDomain: 'demo-travel.firebaseapp.com', projectId: 'demo-travel', appId: 'demo-app',
+};
+
+export const firebaseConfig = USE_EMULATOR ? EMULATOR_CONFIG : LIVE_CONFIG;
 
 export const CATEGORIES = ['이동', '숙소', '관광', '식사', '쇼핑', '기타'];
 
