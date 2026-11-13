@@ -61,14 +61,65 @@ service cloud.firestore {
       return request.resource.data.get(field, null) == resource.data.get(field, null);
     }
 
+    function tripPath(tripId) { return /databases/$(database)/documents/trips/$(tripId); }
+    function invitePath(tripId) { return /databases/$(database)/documents/trips/$(tripId)/private/invite; }
+    function isMember(tripId) { return registered() && me() in get(tripPath(tripId)).data.memberIds; }
+    function isOwnerAfter(tripId) { return registered() && getAfter(tripPath(tripId)).data.ownerId == me(); }
+
     match /trips/{tripId} {
       allow read: if registered() && me() in resource.data.memberIds;
       allow create: if registered()
         && request.resource.data.ownerId == me()
         && request.resource.data.memberIds == [me()];
-      allow update: if registered() && me() in resource.data.memberIds
-        && unchanged('ownerId') && unchanged('memberIds');
+      allow update: if registered() && unchanged('ownerId') && (
+        // members edit details
+        (me() in resource.data.memberIds && unchanged('memberIds'))
+        // the owner adds or removes members but stays a member
+        || (resource.data.ownerId == me() && me() in request.resource.data.memberIds)
+        // a non-member joins themselves with the current invite code
+        || (!(me() in resource.data.memberIds)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+            && request.resource.data.memberIds == resource.data.memberIds.concat([me()])
+            && getAfter(/databases/$(database)/documents/trips/$(tripId)/joins/$(me())).data.code
+               == get(invitePath(tripId)).data.code)
+      );
       allow delete: if registered() && resource.data.ownerId == me();
+
+      match /private/invite {
+        allow read: if registered() && get(tripPath(tripId)).data.ownerId == me();
+        allow write: if isOwnerAfter(tripId)
+          && request.resource.data.keys().hasOnly(['code']);
+      }
+
+      match /joins/{personId} {
+        allow create: if registered() && personId == me()
+          && request.resource.data.keys().hasOnly(['code'])
+          && request.resource.data.code == get(invitePath(tripId)).data.code;
+        allow update: if registered() && personId == me()
+          && request.resource.data.keys().hasOnly(['code'])
+          && request.resource.data.code == get(invitePath(tripId)).data.code;
+      }
+
+      match /items/{id} {
+        allow read, write: if isMember(tripId);
+      }
+
+      match /checklist/{id} {
+        allow read, write: if isMember(tripId);
+      }
+
+      match /journal/{id} {
+        allow read, delete: if isMember(tripId);
+        allow create: if isMember(tripId) && request.resource.data.authorId == me();
+        allow update: if isMember(tripId) && request.resource.data.authorId == resource.data.authorId;
+      }
+    }
+
+    match /inviteCodes/{code} {
+      allow get: if registered();
+      allow create: if isOwnerAfter(request.resource.data.tripId)
+        && request.resource.data.keys().hasOnly(['tripId']);
+      allow delete: if registered() && get(tripPath(resource.data.tripId)).data.ownerId == me();
     }
   }
 }

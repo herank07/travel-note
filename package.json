@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/unit/",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-travel \"node --test tests/rules/\"",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-travel \"node --test --test-concurrency=1 tests/rules/\"",
     "serve": "http-server site -p 8080 -c-1",
     "emulators": "firebase emulators:start --only firestore,auth --project demo-travel"
   },
