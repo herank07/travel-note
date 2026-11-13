@@ -109,7 +109,7 @@ function view(trip, items, requestedDay) {
   return h('main', { class: 'screen' },
     h('div', { class: 'topline' },
       h('a', { href: '#/', style: 'text-decoration:none' }, '‹ 여행 목록'),
-      h('span', { class: 'mono' }, clockLine(trip, at))),
+      h('span', { class: 'clock' }, clockLine(trip, at))),
     h('div', { class: 'title-row' },
       h('div', {}, h('p', { class: 'muted', style: 'font-size:13px' }, trip.name), h('h1', {}, dayTitle(trip, day))),
       h('a', { class: 'btn small', href: `#/trip/${trip.id}/edit` }, '여행 정보')),

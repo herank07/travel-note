@@ -77,7 +77,11 @@ export async function createTrip(fields) {
   batch.set(tripRef, { ...fields, ownerId: me, memberIds: [me], createdAt: serverTimestamp() });
   batch.set(doc(db, 'trips', tripRef.id, 'private', 'invite'), { code });
   batch.set(doc(db, 'inviteCodes', code), { tripId: tripRef.id });
-  batch.commit().catch((e) => console.error('createTrip', e));
+  // Online: wait, so the trip exists on the server before its screen starts listening.
+  // Offline: the write is queued and the screen reads it from the local cache.
+  const committed = batch.commit();
+  if (navigator.onLine) await committed;
+  else committed.catch((e) => console.error('createTrip', e));
   return tripRef.id;
 }
 

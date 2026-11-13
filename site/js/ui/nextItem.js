@@ -23,7 +23,7 @@ function view(trip, items) {
   }
   const list = groupByDay(items, trip.days).byDay.get(status.day) || [];
   const { next } = findNext(list, local.minutes);
-  const header = h('div', { class: 'topline' }, h('span', {}, `${trip.name} · ${dayTitle(trip, status.day)}`), h('span', { class: 'mono' }, clockLine(trip, at)));
+  const header = h('div', { class: 'topline' }, h('span', {}, `${trip.name} · ${dayTitle(trip, status.day)}`), h('span', { class: 'clock' }, clockLine(trip, at)));
   if (!next) {
     return h('main', { class: 'screen' }, header, back, h('div', { class: 'empty' }, h('p', {}, '오늘 남은 일정이 없어요.')), tabbar(trip.id, 'today'));
   }
@@ -59,10 +59,15 @@ export function showDriver(item) {
     h('div', { class: 'local', lang: 'zh' }, item.localName || item.title),
     item.localAddress ? h('div', { class: 'addr', lang: 'zh' }, item.localAddress) : null,
     h('button', { class: 'btn', type: 'button' }, '닫기'));
-  const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', onKey);
+    window.removeEventListener('hashchange', close);
+  };
   const onKey = (e) => { if (e.key === 'Escape') close(); };
   overlay.addEventListener('click', close);
   document.addEventListener('keydown', onKey);
+  window.addEventListener('hashchange', close);
   document.body.append(overlay);
   overlay.focus();
 }

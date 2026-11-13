@@ -164,3 +164,5 @@ p { margin: 0; line-height: 1.5; }
 .fab { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(80px + env(safe-area-inset-bottom)); z-index: 25; width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--ink); color: var(--bg); font-size: 28px; cursor: pointer; box-shadow: 0 4px 14px rgb(0 0 0 / 0.18); }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+.clock { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 500; }
+.topline { flex-wrap: wrap; }
