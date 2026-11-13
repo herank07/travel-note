@@ -155,6 +155,20 @@ try {
   await clickText(laptop, '이 기기 연결하기');
   await waitText(laptop, '2027 상하이');
   check('recovery code restores trips on a new device', true);
+
+  // Offline: with the service worker installed, the schedule still opens without a network.
+  const SW = `${BASE}?sw=1&now=2027-04-16T05:20:00Z`;
+  await laptop.goto(`${SW}#/trip/${tripId}/today/2`);
+  await waitText(laptop, '신톈디 산책');
+  await laptop.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller, { timeout: 15000 })
+    .catch(async () => { await laptop.reload(); await laptop.waitForFunction(() => navigator.serviceWorker.controller, { timeout: 15000 }); });
+  await laptop.reload();
+  await waitText(laptop, '신톈디 산책');
+  await laptop.setOfflineMode(true);
+  await laptop.reload();
+  await waitText(laptop, '신톈디 산책', 15000);
+  check('schedule opens offline', (await text(laptop)).includes('오프라인'));
+  await laptop.setOfflineMode(false);
 } catch (e) {
   check('scenario finished', false, e.message);
   if (lastPage) { console.log('URL', lastPage.url()); console.log((await text(lastPage)).slice(0, 600)); await lastPage.screenshot({ path: `${SHOTS}/fail.png`, fullPage: true }); }

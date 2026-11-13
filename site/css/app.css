@@ -166,3 +166,4 @@ p { margin: 0; line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 .clock { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 500; }
 .topline { flex-wrap: wrap; }
+.offline { position: sticky; top: 0; z-index: 35; background: var(--ink); color: var(--bg); text-align: center; font-size: 13px; padding: calc(6px + env(safe-area-inset-top)) 16px 6px; }

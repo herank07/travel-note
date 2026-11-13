@@ -3,6 +3,7 @@ import { getMyPersonId, joinByCode } from './db.js';
 import { onRoute, navigate, parseRoute } from './router.js';
 import { h, mount, notice } from './ui/dom.js';
 import { renderWelcome } from './ui/welcome.js';
+import { USE_EMULATOR } from './config.js';
 
 // name → [module, export]. Screens receive (params, ctx) and may return a cleanup function.
 const screens = {
@@ -68,6 +69,24 @@ function start() {
   if (started) { show(parseRoute(location.hash)); return; }
   started = true;
   onRoute((route) => show(route).catch((e) => { console.error(e); showError('화면을 열지 못했어요.'); }));
+}
+
+// Offline banner.
+function updateOnline() {
+  let bar = document.querySelector('.offline');
+  if (navigator.onLine) { bar?.remove(); return; }
+  if (!bar) {
+    bar = h('div', { class: 'offline', role: 'status' }, '오프라인이에요. 고친 내용은 연결되면 저장돼요');
+    document.body.prepend(bar);
+  }
+}
+window.addEventListener('online', updateOnline);
+window.addEventListener('offline', updateOnline);
+updateOnline();
+
+// Service worker: always on the real site; on localhost only with ?sw=1 so development reloads stay fresh.
+if ('serviceWorker' in navigator && (!USE_EMULATOR || new URLSearchParams(location.search).has('sw'))) {
+  navigator.serviceWorker.register('sw.js').catch((e) => console.error('service worker', e));
 }
 
 boot();
